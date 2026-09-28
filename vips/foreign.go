@@ -7,7 +7,9 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io"
 	"math"
+	"os"
 	"runtime"
 	"unsafe"
 
@@ -161,6 +163,12 @@ func IsTypeSupported(imageType ImageType) bool {
 
 // DetermineImageType attempts to determine the image type of the given buffer
 func DetermineImageType(buf []byte) ImageType {
+	return determineImageType(buf, bytes.NewReader(buf))
+}
+
+// Raster signatures need only a prefix. SVG retains the XML validation
+// contract, reading the remaining document from its source without buffering.
+func determineImageType(buf []byte, source io.Reader) ImageType {
 	if len(buf) < 12 {
 		return ImageTypeUnknown
 	} else if isJPEG(buf) {
@@ -177,7 +185,7 @@ func DetermineImageType(buf []byte) ImageType {
 		return ImageTypeAVIF
 	} else if isHEIF(buf) {
 		return ImageTypeHEIF
-	} else if isSVG(buf) {
+	} else if isSVG(buf, source) {
 		return ImageTypeSVG
 	} else if isBMP(buf) {
 		return ImageTypeBMP
@@ -260,14 +268,13 @@ func isAVIF(buf []byte) bool {
 
 var svg = []byte("<svg")
 
-func isSVG(buf []byte) bool {
+func isSVG(buf []byte, source io.Reader) bool {
 	sub := buf[:int(math.Min(1024.0, float64(len(buf))))]
 	if bytes.Contains(sub, svg) {
 		data := &struct {
 			XMLName xml.Name `xml:"svg"`
 		}{}
-		reader := bytes.NewReader(buf)
-		decoder := xml.NewDecoder(reader)
+		decoder := xml.NewDecoder(source)
 		decoder.Strict = false
 		decoder.CharsetReader = charset.NewReaderLabel
 
@@ -332,6 +339,38 @@ func isPSD(buf []byte) bool {
 
 func isNeedToChangeLoaderToMagick(t ImageType) bool {
 	return imageMagickTypes[t]
+}
+
+func vipsLoadFromFile(filename string, params *ImportParams) (*C.VipsImage, ImageType, ImageType, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, ImageTypeUnknown, ImageTypeUnknown, err
+	}
+	// DetermineImageType inspects signatures, including formats sharing a loader
+	// (AVIF/HEIF and BMP/PSD/ICO). Never infer the original format from a suffix.
+	var header [4096]byte
+	n, readErr := io.ReadFull(file, header[:])
+	if readErr != nil && readErr != io.EOF && readErr != io.ErrUnexpectedEOF {
+		return nil, ImageTypeUnknown, ImageTypeUnknown, errors.Join(readErr, file.Close())
+	}
+	originalType := determineImageType(header[:n], io.MultiReader(bytes.NewReader(header[:n]), file))
+	if err := file.Close(); err != nil {
+		return nil, ImageTypeUnknown, ImageTypeUnknown, err
+	}
+	currentType := originalType
+	if isNeedToChangeLoaderToMagick(originalType) {
+		currentType = ImageTypeMagick
+	}
+	if !IsTypeSupported(currentType) {
+		return nil, currentType, originalType, ErrUnsupportedImageFormat
+	}
+	importParams := createImportParams(currentType, params)
+	cFilename := C.CString(filename)
+	defer C.free(unsafe.Pointer(cFilename))
+	if C.load_from_file(&importParams, cFilename) != 0 {
+		return nil, currentType, originalType, handleImageError(importParams.outputImage)
+	}
+	return importParams.outputImage, currentType, originalType, nil
 }
 
 func vipsLoadFromBuffer(buf []byte, params *ImportParams) (*C.VipsImage, ImageType, ImageType, error) {

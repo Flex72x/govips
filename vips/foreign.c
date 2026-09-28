@@ -175,21 +175,30 @@ int set_magickload_options(VipsOperation *operation, LoadParams *params) {
   return 0;
 }
 
-int load_buffer(const char *operationName, void *buf, size_t len,
+int load_input(const char *loader, const char *filename, void *buf, size_t len,
                 LoadParams *params, SetLoadOptionsFn setLoadOptions) {
-  VipsBlob *blob = vips_blob_new(NULL, buf, len);
-
+  char *operationName = g_strconcat(loader, filename ? "" : "_buffer", NULL);
   VipsOperation *operation = vips_operation_new(operationName);
+  g_free(operationName);
   if (!operation) {
     return 1;
   }
 
-  if (vips_object_set(VIPS_OBJECT(operation), "buffer", blob, NULL)) {
+  int result;
+  if (filename) {
+    // Set the filename as a property: brackets in a literal path must not be
+    // interpreted as libvips option syntax.
+    result = vips_object_set(VIPS_OBJECT(operation), "filename", filename, NULL);
+  } else {
+    VipsBlob *blob = vips_blob_new(NULL, buf, len);
+    result = vips_object_set(VIPS_OBJECT(operation), "buffer", blob, NULL);
     vips_area_unref(VIPS_AREA(blob));
+  }
+  if (result) {
+    vips_object_unref_outputs(VIPS_OBJECT(operation));
+    g_object_unref(operation);
     return 1;
   }
-
-  vips_area_unref(VIPS_AREA(blob));
 
   if (setLoadOptions(operation, params)) {
     vips_object_unref_outputs(VIPS_OBJECT(operation));
@@ -439,48 +448,43 @@ int set_jxlsave_options(VipsOperation *operation, SaveParams *params) {
   return ret;
 }
 
-int load_from_buffer(LoadParams *params, void *buf, size_t len) {
-  switch (params->inputFormat) {
-    case JPEG:
-      return load_buffer("jpegload_buffer", buf, len, params,
-                         set_jpegload_options);
-    case PNG:
-      return load_buffer("pngload_buffer", buf, len, params,
-                         set_pngload_options);
-    case WEBP:
-      return load_buffer("webpload_buffer", buf, len, params,
-                         set_webpload_options);
-    case HEIF:
-      return load_buffer("heifload_buffer", buf, len, params,
-                         set_heifload_options);
-    case TIFF:
-      return load_buffer("tiffload_buffer", buf, len, params,
-                         set_tiffload_options);
-    case SVG:
-      return load_buffer("svgload_buffer", buf, len, params,
-                         set_svgload_options);
-    case GIF:
-      return load_buffer("gifload_buffer", buf, len, params,
-                         set_gifload_options);
-    case PDF:
-      return load_buffer("pdfload_buffer", buf, len, params,
-                         set_pdfload_options);
-    case MAGICK:
-      return load_buffer("magickload_buffer", buf, len, params,
-                         set_magickload_options);
-    case AVIF:
-      return load_buffer("heifload_buffer", buf, len, params,
-                         set_heifload_options);
-    case JP2K:
-      return load_buffer("jp2kload_buffer", buf, len, params,
-                          set_jp2kload_options);
-    case JXL:
-      return load_buffer("jxlload_buffer", buf, len, params,
-                          set_jxlload_options);
-    default:
-      g_warning("Unsupported input type given: %d", params->inputFormat);
+// File and buffer loaders share both format routing and option setters.
+static const struct {
+  ImageType format;
+  const char *loader;
+  SetLoadOptionsFn options;
+} input_loaders[] = {
+  {JPEG, "jpegload", set_jpegload_options},
+  {PNG, "pngload", set_pngload_options},
+  {WEBP, "webpload", set_webpload_options},
+  {HEIF, "heifload", set_heifload_options},
+  {TIFF, "tiffload", set_tiffload_options},
+  {SVG, "svgload", set_svgload_options},
+  {GIF, "gifload", set_gifload_options},
+  {PDF, "pdfload", set_pdfload_options},
+  {MAGICK, "magickload", set_magickload_options},
+  {AVIF, "heifload", set_heifload_options},
+  {JP2K, "jp2kload", set_jp2kload_options},
+  {JXL, "jxlload", set_jxlload_options},
+};
+
+static int load_encoded_input(LoadParams *params, const char *filename, void *buf, size_t len) {
+  for (size_t i = 0; i < G_N_ELEMENTS(input_loaders); i++) {
+    if (input_loaders[i].format == params->inputFormat) {
+      return load_input(input_loaders[i].loader, filename, buf, len, params,
+                        input_loaders[i].options);
+    }
   }
+  g_warning("Unsupported input type given: %d", params->inputFormat);
   return 1;
+}
+
+int load_from_buffer(LoadParams *params, void *buf, size_t len) {
+  return load_encoded_input(params, NULL, buf, len);
+}
+
+int load_from_file(LoadParams *params, const char *filename) {
+  return load_encoded_input(params, filename, NULL, 0);
 }
 
 int save_to_buffer(SaveParams *params) {

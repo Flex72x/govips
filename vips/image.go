@@ -12,7 +12,6 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
-	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -493,15 +492,21 @@ func NewImageFromFile(file string) (*ImageRef, error) {
 	return LoadImageFromFile(file, nil)
 }
 
-// LoadImageFromFile loads an image from file and creates a new ImageRef
+// LoadImageFromFile loads directly through libvips without buffering the encoded
+// file in Go memory. The file must remain unchanged and available until the
+// ImageRef and images derived from it are closed: decoding can be lazy.
 func LoadImageFromFile(file string, params *ImportParams) (*ImageRef, error) {
-	buf, err := os.ReadFile(file)
+	if err := startupIfNeeded(); err != nil {
+		return nil, err
+	}
+	if params == nil {
+		params = NewImportParams()
+	}
+	vipsImage, currentFormat, originalFormat, err := vipsLoadFromFile(file, params)
 	if err != nil {
 		return nil, err
 	}
-
-	govipsLog("govips", LogLevelDebug, fmt.Sprintf("creating imageRef from file %s", file))
-	return LoadImageFromBuffer(buf, params)
+	return newImageRef(vipsImage, currentFormat, originalFormat, nil), nil
 }
 
 // NewImageFromBuffer loads an image buffer and creates a new Image
