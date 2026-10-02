@@ -463,6 +463,10 @@ if err != nil {
 
 For the full set of format-specific export options (PNG palette, WebP near-lossless/target size, TIFF compression, HEIF bit depth, ...), use the typed variants: `SaveToWriterJpeg`, `SaveToWriterPng`, `SaveToWriterWebp`, `SaveToWriterTiff`, `SaveToWriterHeif`, `SaveToWriterGif`.
 
+For seekable TIFF output without an encoded Go buffer, use `image.SaveToFileTiff(path, params)`. It shares options with `ExportTiff`; filenames are literal and the caller discards partial output on failure.
+
+`image.Materialize()` also detaches native filename sources before random-access operations. Configure its RAM/disk threshold and scratch directory with the setters below. `image.SetKill(true)` may run concurrently with evaluation; stop and join the cancellation goroutine before transformations or `Close`.
+
 For non-seekable readers (e.g. `http.Request.Body`), libvips buffers header data up to ~1 GB by default. Lower the limit to bound memory usage:
 
 ```go
@@ -497,7 +501,7 @@ vips.SetStreamScratchDir("/var/scratch") // default os.TempDir()
 
 **Which operations keep the sequential fast path?** Sequential images may only be read top-to-bottom, once. Safe: resize/thumbnail (shrink), crop, flatten, colorspace conversion, sharpen/blur (line kernels), horizontal flip, format conversion. Forcing materialization: rotation (90°/180°/270°), vertical flip, `AutoRotate` for EXIF orientations 3–8 (`TranscodeStream` detects this from the header automatically), `FindTrim`, `SmartCrop`, and anything else that reads pixels out of order. Attempting a random-access operation on a sequential image fails with an "out of order read" error from libvips.
 
-**Codec caveats.** True end-to-end streaming also depends on the codec: progressive (interlaced) JPEG and interlaced PNG cannot stream — on decode the codec buffers all input before emitting rows, and on encode (govips' *default* JPEG params set `Interlace: true`) it buffers the whole image before writing the first byte. Pass `Interlaced: false` for streaming output. HEIF/HEIC decodes whole-frame inside libheif regardless of access mode, and TIFF output is encoded in memory (seekable-output requirement). Non-seekable inputs additionally accumulate compressed bytes read so far (bounded by `SetPipeReadLimit`).
+**Codec caveats.** True end-to-end streaming also depends on the codec: progressive (interlaced) JPEG and interlaced PNG cannot stream — on decode the codec buffers all input before emitting rows, and on encode (govips' *default* JPEG params set `Interlace: true`) it buffers the whole image before writing the first byte. Pass `Interlaced: false` for streaming output. HEIF/HEIC decodes whole-frame inside libheif regardless of access mode, and TIFF writer output is encoded in memory (use `SaveToFileTiff` for seekable file output). Non-seekable inputs additionally accumulate compressed bytes read so far (bounded by `SetPipeReadLimit`).
 
 **Where errors surface.** On the default (materialized) load, truncated or erroring streams fail inside `LoadImageFromReader`/`TranscodeStream` during materialization. On the sequential path the load only reads the header, so the same failures surface from the operation that first consumes pixels — typically `SaveToWriter` — wrapped with the original reader error (`errors.Is` works).
 

@@ -287,8 +287,24 @@ int save_heif_to_target(SaveParams *params, VipsTargetCustom *target) {
   return save_target("heifsave_target", params, target, set_heifsave_options);
 }
 
-// No save_tiff_to_target: libtiff requires seekable output, so the Go
-// side always encodes TIFF through the buffer path.
+// Filename output is seekable/readable for libtiff. Reuse the buffer option
+// setter without constructing the whole encoded TIFF in memory.
+int save_tiff_to_file(SaveParams *params, const char *filename) {
+  VipsOperation *operation = vips_operation_new("tiffsave");
+  if (!operation) {
+    return 1;
+  }
+  if (vips_object_set(VIPS_OBJECT(operation), "in", params->inputImage,
+                      "filename", filename, NULL) ||
+      set_tiffsave_options(operation, params)) {
+    g_object_unref(operation);
+    return 1;
+  }
+  int code = vips_object_build(VIPS_OBJECT(operation));
+  vips_object_unref_outputs(VIPS_OBJECT(operation));
+  g_object_unref(operation);
+  return code;
+}
 
 int save_gif_to_target(SaveParams *params, VipsTargetCustom *target) {
   return save_target("gifsave_target", params, target, set_gifsave_options);

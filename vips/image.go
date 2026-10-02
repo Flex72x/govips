@@ -33,11 +33,14 @@ type ImageRef struct {
 	// NOTE: We keep a reference to this so that the input buffer is
 	// never garbage collected during processing. Some image loaders use random
 	// access transcoding and therefore need the original buffer to be in memory.
-	buf                 []byte
-	image               *C.VipsImage
-	format              ImageType
-	originalFormat      ImageType
-	lock                sync.Mutex
+	buf            []byte
+	image          *C.VipsImage
+	format         ImageType
+	originalFormat ImageType
+	lock           sync.Mutex
+	// Separate ownership/kill synchronization lets cancellation reach native
+	// evaluation while a streaming encoder holds lock.
+	killLock            sync.Mutex
 	preMultiplication   *PreMultiplicationState
 	optimizedIccProfile string
 
@@ -827,6 +830,7 @@ func finalizeImage(ref *ImageRef) {
 // can't keep up with the amount of memory, so you might want to manually close the images.
 func (r *ImageRef) Close() {
 	r.lock.Lock()
+	r.killLock.Lock()
 
 	if r.image != nil {
 		clearImage(r.image)
@@ -841,6 +845,7 @@ func (r *ImageRef) Close() {
 	src := r.streamSource
 	r.streamSource = nil
 
+	r.killLock.Unlock()
 	r.lock.Unlock()
 
 	if src != nil {
@@ -848,10 +853,13 @@ func (r *ImageRef) Close() {
 	}
 }
 
-// SetKill sets the libvips kill flag used to stop image evaluation.
+// SetKill sets the libvips kill flag used to stop image evaluation. It may be
+// called concurrently with evaluation. Other concurrent ImageRef usage,
+// including transforms and Close, is not supported.
 func (r *ImageRef) SetKill(kill bool) {
-	r.lock.Lock()
-	defer r.lock.Unlock()
+	r.killLock.Lock()
+	defer r.killLock.Unlock()
+	defer runtime.KeepAlive(r)
 
 	if r.image != nil {
 		C.vips_image_set_kill(r.image, toGboolean(kill))
@@ -862,6 +870,8 @@ func (r *ImageRef) SetKill(kill bool) {
 func (r *ImageRef) setImage(image *C.VipsImage) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
+	r.killLock.Lock()
+	defer r.killLock.Unlock()
 
 	if r.image == image {
 		return

@@ -71,6 +71,7 @@ int save_png_to_target(SaveParams *params, VipsTargetCustom *target);
 int save_webp_to_target(SaveParams *params, VipsTargetCustom *target);
 int save_heif_to_target(SaveParams *params, VipsTargetCustom *target);
 int save_gif_to_target(SaveParams *params, VipsTargetCustom *target);
+int save_tiff_to_file(SaveParams *params, const char *filename);
 
 // Copies the first len bytes of the source into out without consuming
 // them (vips_source_sniff buffers and rewinds). Returns non-zero if the

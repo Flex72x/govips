@@ -572,35 +572,39 @@ func LoadImageFromReader(r io.Reader, params *ImportParams) (*ImageRef, error) {
 	return ref, nil
 }
 
-// materialize converts a sequentially stream-loaded image into a
-// materialized one (memory or scratch disc, by threshold) and releases
-// its source, making random-access operations valid. It is a no-op for
-// images that are already materialized.
-func (r *ImageRef) materialize() error {
+// Materialize renders a native-file or stream-loaded image to memory or scratch
+// disc by SetStreamDiscThreshold, detaches its source, and allows random access.
+// Call it before operations that read a sequential source out of order.
+func (r *ImageRef) Materialize() error {
 	r.lock.Lock()
+	defer runtime.KeepAlive(r)
 
 	if r.image == nil {
 		r.lock.Unlock()
 		return errors.New("attempt to materialize a closed ImageRef")
 	}
 	src := r.streamSource
-	if src == nil {
-		r.lock.Unlock()
-		return nil
-	}
 
 	out, err := materializeImage(r.image)
 	if err != nil {
 		r.lock.Unlock()
-		return wrapStreamError("streaming load", err, src.entry.takeErr())
+		if src != nil {
+			return wrapStreamError("streaming load", err, src.entry.takeErr())
+		}
+		return err
 	}
 
+	r.killLock.Lock()
 	clearImage(r.image)
 	r.image = out
+	r.buf = nil
 	r.streamSource = nil
+	r.killLock.Unlock()
 	r.lock.Unlock()
 
-	src.release()
+	if src != nil {
+		src.release()
+	}
 	return nil
 }
 

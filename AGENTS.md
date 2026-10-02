@@ -42,7 +42,7 @@ resources/            test fixtures + golden files
 examples/             runnable examples (separate go modules)
 ```
 
-`ImageRef` is a mutable handle: operations replace the underlying `VipsImage` via `setImage` (which unrefs the old one). `Close` and a GC finalizer release the ref. `r.lock` guards only lifecycle/ownership transitions (`Close`, `SetKill`, `setImage`, streaming materialize/save); ordinary transform/export/metadata methods take no lock, just `runtime.KeepAlive(r)`, so an `ImageRef` is NOT safe for concurrent use. Never call methods (including `Close`) on the same `ImageRef` from multiple goroutines.
+`ImageRef` is a mutable handle: operations replace the underlying `VipsImage` via `setImage` (which unrefs the old one). `Close` and a GC finalizer release the ref. `r.lock` guards lifecycle/ownership transitions (`Close`, `setImage`, streaming materialize/save); a separate `killLock` synchronizes the image pointer for `SetKill` during evaluation; ordinary transform/export/metadata methods take no lock, just `runtime.KeepAlive(r)`, so an `ImageRef` is NOT safe for concurrent use. Only `SetKill` may run concurrently with evaluation; join cancellation before transforms or `Close`. Other methods on the same `ImageRef` must remain serialized.
 
 ## cgo and memory rules
 

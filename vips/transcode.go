@@ -83,7 +83,7 @@ func TranscodeStream(r io.Reader, w io.Writer, opts *TranscodeOptions) error {
 		// sequential-safe; everything else transposes or reverses line
 		// order and needs random access.
 		if img.Orientation() >= 3 {
-			if err := img.materialize(); err != nil {
+			if err := img.Materialize(); err != nil {
 				return fmt.Errorf("transcode: %w", err)
 			}
 		}
