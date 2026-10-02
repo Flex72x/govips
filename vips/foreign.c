@@ -104,6 +104,11 @@ int set_jpegload_options(VipsOperation *operation, LoadParams *params) {
   return 0;
 }
 
+int set_pnmload_options(VipsOperation *operation, LoadParams *params) {
+  MAYBE_SET_INT(operation, params->access, "access");
+  return 0;
+}
+
 int set_pngload_options(VipsOperation *operation, LoadParams *params) {
   MAYBE_SET_BOOL(operation, params->fail, "fail");
   MAYBE_SET_INT(operation, params->access, "access");
@@ -456,6 +461,7 @@ static const struct {
 } input_loaders[] = {
   {JPEG, "jpegload", set_jpegload_options},
   {PNG, "pngload", set_pngload_options},
+  {PNM, "ppmload", set_pnmload_options},
   {WEBP, "webpload", set_webpload_options},
   {HEIF, "heifload", set_heifload_options},
   {TIFF, "tiffload", set_tiffload_options},

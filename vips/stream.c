@@ -6,6 +6,7 @@
 // Reusing them keeps streaming output identical to the buffer output.
 extern int set_jpegload_options(VipsOperation *operation, LoadParams *params);
 extern int set_pngload_options(VipsOperation *operation, LoadParams *params);
+extern int set_pnmload_options(VipsOperation *operation, LoadParams *params);
 extern int set_webpload_options(VipsOperation *operation, LoadParams *params);
 extern int set_tiffload_options(VipsOperation *operation, LoadParams *params);
 extern int set_gifload_options(VipsOperation *operation, LoadParams *params);
@@ -92,6 +93,7 @@ int source_sniff_header(VipsSourceCustom *source, unsigned char *out, int len) {
 static ImageType image_type_for_loader(const char *name) {
   if (g_str_has_prefix(name, "jpegload")) return JPEG;
   if (g_str_has_prefix(name, "pngload")) return PNG;
+  if (g_str_has_prefix(name, "ppmload")) return PNM;
   if (g_str_has_prefix(name, "webpload")) return WEBP;
   if (g_str_has_prefix(name, "tiffload")) return TIFF;
   if (g_str_has_prefix(name, "gifload")) return GIF;
@@ -118,6 +120,8 @@ static SetLoadOptionsFn load_options_for_type(ImageType imageType) {
       return set_jpegload_options;
     case PNG:
       return set_pngload_options;
+    case PNM:
+      return set_pnmload_options;
     case WEBP:
       return set_webpload_options;
     case TIFF:
@@ -277,6 +281,14 @@ int save_jpeg_to_target(SaveParams *params, VipsTargetCustom *target) {
 
 int save_png_to_target(SaveParams *params, VipsTargetCustom *target) {
   return save_target("pngsave_target", params, target, set_pngsave_options);
+}
+
+int save_pnm_to_file(VipsImage *image, const char *filename) {
+  return vips_ppmsave(image, filename, "ascii", FALSE, "strip", TRUE, NULL);
+}
+
+int save_raw_to_file(VipsImage *image, const char *filename) {
+  return vips_rawsave(image, filename, NULL);
 }
 
 int save_webp_to_target(SaveParams *params, VipsTargetCustom *target) {

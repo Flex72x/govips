@@ -28,6 +28,7 @@ typedef enum types {
   JP2K,
   JXL,
   PSD,
+  PNM,
 } ImageType;
 
 typedef enum ParamType {

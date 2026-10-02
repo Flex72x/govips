@@ -47,6 +47,7 @@ const (
 	ImageTypeJP2K    ImageType = C.JP2K
 	ImageTypeJXL     ImageType = C.JXL
 	ImageTypePSD     ImageType = C.PSD
+	ImageTypePNM     ImageType = C.PNM
 )
 
 // Types which should be deligated to ImageMagick loader
@@ -70,6 +71,7 @@ var imageTypeExtensionMap = map[ImageType]string{
 	ImageTypeJP2K:   ".jp2",
 	ImageTypeJXL:    ".jxl",
 	ImageTypePSD:    ".psd",
+	ImageTypePNM:    ".pnm",
 }
 
 // ImageTypes defines the various image types supported by govips
@@ -88,6 +90,7 @@ var ImageTypes = map[ImageType]string{
 	ImageTypeJP2K:   "jp2k",
 	ImageTypeJXL:    "jxl",
 	ImageTypePSD:    "psd",
+	ImageTypePNM:    "ppm",
 }
 
 // TiffCompression represents method for compressing a tiff at export
@@ -169,7 +172,9 @@ func DetermineImageType(buf []byte) ImageType {
 // Raster signatures need only a prefix. SVG retains the XML validation
 // contract, reading the remaining document from its source without buffering.
 func determineImageType(buf []byte, source io.Reader) ImageType {
-	if len(buf) < 12 {
+	if len(buf) >= 3 && buf[0] == 'P' && buf[1] >= '1' && buf[1] <= '6' && (buf[2] == ' ' || buf[2] == '\n' || buf[2] == '\r' || buf[2] == '\t') {
+		return ImageTypePNM
+	} else if len(buf) < 12 {
 		return ImageTypeUnknown
 	} else if isJPEG(buf) {
 		return ImageTypeJPEG
