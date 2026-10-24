@@ -385,10 +385,11 @@ func NewGifExportParams() *GifExportParams {
 
 // HeifExportParams are options when exporting a HEIF to file or buffer
 type HeifExportParams struct {
-	Quality  int
-	Bitdepth int
-	Effort   int
-	Lossless bool
+	Quality       int
+	Bitdepth      int
+	Effort        int
+	Lossless      bool
+	StripMetadata bool
 }
 
 // NewHeifExportParams creates default values for an export of a HEIF image.

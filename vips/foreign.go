@@ -563,6 +563,7 @@ func vipsSaveTIFFToBuffer(in *C.VipsImage, params TiffExportParams) ([]byte, err
 func newSaveParamsHEIF(in *C.VipsImage, params HeifExportParams) C.struct_SaveParams {
 	p := C.create_save_params(C.HEIF)
 	p.inputImage = in
+	p.stripMetadata = C.int(boolToInt(params.StripMetadata))
 	p.outputFormat = C.HEIF
 	p.quality = C.int(params.Quality)
 	p.heifLossless = C.int(boolToInt(params.Lossless))

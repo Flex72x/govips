@@ -378,7 +378,8 @@ int set_gifsave_options(VipsOperation *operation, SaveParams *params) {
 
 // https://github.com/libvips/libvips/blob/master/libvips/foreign/heifsave.c#L653
 int set_heifsave_options(VipsOperation *operation, SaveParams *params) {
-  int ret = vips_object_set(VIPS_OBJECT(operation), "lossless",
+  int ret = vips_object_set(VIPS_OBJECT(operation), "strip",
+                            params->stripMetadata, "lossless",
                             params->heifLossless, NULL);
 
 #if (VIPS_MAJOR_VERSION >= 8) && (VIPS_MINOR_VERSION >= 13)

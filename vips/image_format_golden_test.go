@@ -264,3 +264,29 @@ func TestPDF_WithOffsetStart(t *testing.T) {
 			assert.Equal(t, 396, img.Height())
 		}, nil)
 }
+
+// A HEIC save used to ignore StripMetadata: heifsave never received "strip",
+// so a HEIC always carried the source metadata while every other format could
+// drop it. The minimal fields libvips adds back are not a privacy concern, so
+// the check is that stripping leaves strictly fewer fields.
+func TestImage_HeifExport_StripMetadata(t *testing.T) {
+	skipIfHeifSaveUnsupported(t)
+
+	exported := func(strip bool) int {
+		img, err := NewImageFromFile(resources + "heic-24bit-exif.heic")
+		require.NoError(t, err)
+		defer img.Close()
+		params := NewHeifExportParams()
+		params.StripMetadata = strip
+		out, _, err := img.ExportHeif(params)
+		require.NoError(t, err)
+		saved, err := NewImageFromBuffer(out)
+		require.NoError(t, err)
+		defer saved.Close()
+		return len(saved.GetExif())
+	}
+
+	kept := exported(false)
+	assert.Greater(t, kept, 0)
+	assert.Less(t, exported(true), kept)
+}
