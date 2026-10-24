@@ -4,26 +4,6 @@
 
 // Option setters shared with the buffer path, defined in foreign.c.
 // Reusing them keeps streaming output identical to the buffer output.
-extern int set_jpegload_options(VipsOperation *operation, LoadParams *params);
-extern int set_pngload_options(VipsOperation *operation, LoadParams *params);
-extern int set_pnmload_options(VipsOperation *operation, LoadParams *params);
-extern int set_webpload_options(VipsOperation *operation, LoadParams *params);
-extern int set_tiffload_options(VipsOperation *operation, LoadParams *params);
-extern int set_gifload_options(VipsOperation *operation, LoadParams *params);
-extern int set_heifload_options(VipsOperation *operation, LoadParams *params);
-extern int set_svgload_options(VipsOperation *operation, LoadParams *params);
-extern int set_pdfload_options(VipsOperation *operation, LoadParams *params);
-extern int set_jp2kload_options(VipsOperation *operation, LoadParams *params);
-extern int set_jxlload_options(VipsOperation *operation, LoadParams *params);
-extern int set_magickload_options(VipsOperation *operation, LoadParams *params);
-
-extern int set_jpegsave_options(VipsOperation *operation, SaveParams *params);
-extern int set_pngsave_options(VipsOperation *operation, SaveParams *params);
-extern int set_webpsave_options(VipsOperation *operation, SaveParams *params);
-extern int set_heifsave_options(VipsOperation *operation, SaveParams *params);
-extern int set_avifsave_options(VipsOperation *operation, SaveParams *params);
-extern int set_tiffsave_options(VipsOperation *operation, SaveParams *params);
-extern int set_gifsave_options(VipsOperation *operation, SaveParams *params);
 
 // Trampolines: extract the registry handle from signal user_data and
 // forward to the exported Go callbacks. Buffers are owned by libvips and

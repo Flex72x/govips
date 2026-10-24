@@ -150,3 +150,27 @@ typedef struct SaveParams {
 
 SaveParams create_save_params(ImageType outputFormat);
 int save_to_buffer(SaveParams *params);
+
+// Per-format option setters, defined in foreign.c. They are declared here so
+// every translation unit that calls them, including the streaming savers in
+// stream.c, is checked against the same signatures.
+
+int set_jpegload_options(VipsOperation *operation, LoadParams *params);
+int set_pngload_options(VipsOperation *operation, LoadParams *params);
+int set_pnmload_options(VipsOperation *operation, LoadParams *params);
+int set_webpload_options(VipsOperation *operation, LoadParams *params);
+int set_tiffload_options(VipsOperation *operation, LoadParams *params);
+int set_gifload_options(VipsOperation *operation, LoadParams *params);
+int set_heifload_options(VipsOperation *operation, LoadParams *params);
+int set_svgload_options(VipsOperation *operation, LoadParams *params);
+int set_pdfload_options(VipsOperation *operation, LoadParams *params);
+int set_jp2kload_options(VipsOperation *operation, LoadParams *params);
+int set_jxlload_options(VipsOperation *operation, LoadParams *params);
+int set_magickload_options(VipsOperation *operation, LoadParams *params);
+int set_jpegsave_options(VipsOperation *operation, SaveParams *params);
+int set_pngsave_options(VipsOperation *operation, SaveParams *params);
+int set_webpsave_options(VipsOperation *operation, SaveParams *params);
+int set_heifsave_options(VipsOperation *operation, SaveParams *params);
+int set_avifsave_options(VipsOperation *operation, SaveParams *params);
+int set_tiffsave_options(VipsOperation *operation, SaveParams *params);
+int set_gifsave_options(VipsOperation *operation, SaveParams *params);
