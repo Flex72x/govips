@@ -21,6 +21,7 @@ extern int set_jpegsave_options(VipsOperation *operation, SaveParams *params);
 extern int set_pngsave_options(VipsOperation *operation, SaveParams *params);
 extern int set_webpsave_options(VipsOperation *operation, SaveParams *params);
 extern int set_heifsave_options(VipsOperation *operation, SaveParams *params);
+extern int set_avifsave_options(VipsOperation *operation, SaveParams *params);
 extern int set_tiffsave_options(VipsOperation *operation, SaveParams *params);
 extern int set_gifsave_options(VipsOperation *operation, SaveParams *params);
 
@@ -297,6 +298,12 @@ int save_webp_to_target(SaveParams *params, VipsTargetCustom *target) {
 
 int save_heif_to_target(SaveParams *params, VipsTargetCustom *target) {
   return save_target("heifsave_target", params, target, set_heifsave_options);
+}
+
+// AVIF is heifsave with AV1 compression, so it shares the target saver and
+// differs from HEIF only in the option setter.
+int save_avif_to_target(SaveParams *params, VipsTargetCustom *target) {
+  return save_target("heifsave_target", params, target, set_avifsave_options);
 }
 
 // Filename output is seekable/readable for libtiff. Reuse the buffer option

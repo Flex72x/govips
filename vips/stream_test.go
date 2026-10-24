@@ -484,6 +484,20 @@ func TestSaveToWriterTyped_ByteIdenticalToExport(t *testing.T) {
 			"typed TIFF streaming output must match ExportTiff (got %d bytes, want %d)", w.Len(), len(expected))
 	})
 
+	t.Run("avif effort", func(t *testing.T) {
+		params := NewAvifExportParams()
+		params.Quality = 70
+		params.Effort = 1
+		params.StripMetadata = true
+		expected, _, err := img.ExportAvif(params)
+		require.NoError(t, err)
+
+		var w bytes.Buffer
+		require.NoError(t, img.SaveToWriterAvif(&w, params))
+		assert.True(t, bytes.Equal(expected, w.Bytes()),
+			"typed AVIF streaming output must match ExportAvif (got %d bytes, want %d)", w.Len(), len(expected))
+	})
+
 	_, targets := streamRegistrySizes()
 	assert.Zero(t, targets, "all targets must be deregistered after save")
 }

@@ -577,9 +577,9 @@ func vipsSaveHEIFToBuffer(in *C.VipsImage, params HeifExportParams) ([]byte, err
 	return vipsSaveToBuffer(newSaveParamsHEIF(in, params))
 }
 
-func vipsSaveAVIFToBuffer(in *C.VipsImage, params AvifExportParams) ([]byte, error) {
-	incOpCounter("save_heif_buffer")
-
+// newSaveParamsAVIF is the single source of AVIF save options for both the
+// buffer and the streaming-target path, so the two cannot drift apart.
+func newSaveParamsAVIF(in *C.VipsImage, params AvifExportParams) C.struct_SaveParams {
 	// Speed was deprecated but we want to avoid breaking code that still uses it:
 	effort := params.Effort
 	if params.Speed != 0 {
@@ -594,8 +594,13 @@ func vipsSaveAVIFToBuffer(in *C.VipsImage, params AvifExportParams) ([]byte, err
 	p.heifLossless = C.int(boolToInt(params.Lossless))
 	p.heifBitdepth = C.int(params.Bitdepth)
 	p.heifEffort = C.int(effort)
+	return p
+}
 
-	return vipsSaveToBuffer(p)
+func vipsSaveAVIFToBuffer(in *C.VipsImage, params AvifExportParams) ([]byte, error) {
+	incOpCounter("save_avif_buffer")
+
+	return vipsSaveToBuffer(newSaveParamsAVIF(in, params))
 }
 
 func vipsSaveJP2KToBuffer(in *C.VipsImage, params Jp2kExportParams) ([]byte, error) {

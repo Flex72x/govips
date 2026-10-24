@@ -715,6 +715,20 @@ func (r *ImageRef) SaveToWriterGif(w io.Writer, params *GifExportParams) error {
 	})
 }
 
+// SaveToWriterAvif streams the image to w as AVIF with the full set of AVIF
+// export options (Quality, Lossless, Bitdepth, Effort, ...). Behaves like
+// SaveToWriter; params may be nil for defaults. Output is byte-identical
+// to ExportAvif.
+func (r *ImageRef) SaveToWriterAvif(w io.Writer, params *AvifExportParams) error {
+	if params == nil {
+		params = NewAvifExportParams()
+	}
+	p := *params
+	return r.saveToWriter(w, ImageTypeAVIF, func(in *C.VipsImage) (C.struct_SaveParams, func(), error) {
+		return newSaveParamsAVIF(in, p), func() {}, nil
+	})
+}
+
 // saveToWriter is the shared core of SaveToWriter and its typed
 // variants: it locks the image, builds the C save params via
 // buildParams, and runs the streaming (or, for TIFF, buffered) save.
@@ -779,6 +793,8 @@ func (r *ImageRef) saveToWriter(w io.Writer, format ImageType, buildParams func(
 		code = C.save_webp_to_target(&saveParams, target)
 	case ImageTypeHEIF:
 		code = C.save_heif_to_target(&saveParams, target)
+	case ImageTypeAVIF:
+		code = C.save_avif_to_target(&saveParams, target)
 	// ImageTypeTIFF is handled by the buffer-path early return above.
 	case ImageTypeGIF:
 		code = C.save_gif_to_target(&saveParams, target)
